@@ -1,0 +1,63 @@
+---
+title: '525'
+author: 'Xinyu Han, NetID: xinyuh5'
+date: "12/14/2018"
+output:
+  word_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Forward-Backward Algorithm
+
+#Problem
+
+The main problem to be solved by Forward-Backward algokrithm is called smoothing, meaning to compute $p(q_t|y_{0:T})$. As we can see from the formula, this is to compute the hidden state conditioning on all evidence, both in the history evidence and the future evidence. Since it is based on both the past and the future, the uncertainty of our computation will be significantly reduced.
+
+#Algorithm
+
+The key of Forward-Backward algorithm is to decompose the chain into two parts, the past and the future. It can be seen in the followin formula:
+
+$$p(q_t|y_{0:T}) = \frac{p(q_t , y_{0:T})}{p(y_{0:T})} = \frac{p(y_{0:T}|q_t )p(q_t)}{p(y_{0:T})}( \text{bayes' rule}) 
+= \frac{p(y_{0:t} |q_t)p(q_t)p(y_{(t+1):T}|q
+_t)}{p(y_{0:T})}\text{(conditional independence)}
+= \frac{p(y_{0:t} , q_t)p(y_{(t+1):T} |q_t)}{p(y_{0:T})}$$
+
+Let $\alpha_t (q_t) = p(y_{0:t} , q_t)$ and $\beta_t (q_t) = p(y_{(t+1):T} |q_t)$, then $p(q_t|y_{0:T}) \propto \alpha_t(q_t)\beta_t(q_t)$, where $\alpha_t(q_t)$ is the same as the filter discussed before, representing forward and $\beta_t(q_t)$ represents backward. Recall that we have simplified $\alpha_t (q_t)$ into $\alpha_t (q_t) = p(y_t|q_t)\sum_{q_{t-1}} p(q_t | q_{t-1})\alpha_{t-1}(q_{t-1})$. Similarly, we can simplify $\beta_t(q_t)$ into $\beta_t(q_t) = \sum_{q_{t+1}} \beta_{q_{t+1}}(q_{t+1})p(y_{t+1}|q_{t+1})p(q_{t+1}|q_t)$. 
+
+Therefore, we have derivateved two recursive patterns for both $\alpha$ and $\beta$. The initial states is $\alpha_0 (q_0) = p(y_0|q_0)p(q_0 )$ and $\beta_T(q_T) = 1$. Finally, our problem can be solved and the marginal distribution is given by $p(q_t|y_{0:T})\propto \alpha_t(q_t)\beta_t(q_t)$. The Forward-Backward algorithm is also called alpha-beta algorithm. Later, we will present a small example to show how this algorithm works compared to the filter (Forward algorithm).
+
+#baum-welch algorithm
+
+As we discussed above, Forward-Backward algorithm is based on assumptions of the knowledge of length $T$, all transition probabilities $p(q_{t+1}|q_t)$, all emission probabilities $p(y_t|q_t)$ and the initial state. However, these parameters are not very easy to get and in real life, what we can easily to fetch is several sequence of observations. Questions about parameter learning for HMM model arise. Thus, Baum-Welch algorithm is designed by combining Forward-Backward algorithm with E-M algorithm in order to solve such questions.
+
+E-M algorithm consists of two steps, which are E-step and M-step. Here for Baum-Welch algorithm, the E-step uses Forward-Backward algorithm to compute probability based on current parameters and observations. The M-step update parameters using MLE estimates based on Lagrangian multiplier. Thus, we can train HMM model based on seceral observed sequences until convergence. However, it must be mensioned that the initial state is important in this process, since this algorithm is non-convex problem indicating there is no garantee for global optimal convergence.
+
+#Application
+
+First, we are going to apply Forward algorithm and Forward-Backward algorithm to evaluate models to see their difference giving us some intuitives.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
