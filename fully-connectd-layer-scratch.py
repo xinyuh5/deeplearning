@@ -117,7 +117,7 @@ for e in range(epochs):
         model['W1'] = model['W1'] - alpha * rho_W.T
 
 
-# In[6]:
+
 
 
 total_correct = 0
