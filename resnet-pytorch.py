@@ -16,7 +16,7 @@ import numpy as np
 torch.cuda.is_available()
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-# Hyper-parameters
+## Hyper-parameters
 num_epochs = 100
 learning_rate = 0.01#/10.0
 batch_size = 128
