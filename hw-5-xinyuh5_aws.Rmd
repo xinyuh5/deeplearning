@@ -1,0 +1,124 @@
+---
+title: "Untitled"
+author: 'Xinyu Han, NetID: xinyuh5'
+date: "11/10/2018"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+load("~/stat430/data_prepared1.RData")
+library(data.table)
+library(keras)
+```
+## Scale variables
+```{r}
+col_price <- seq(2,42,2)
+col_volume <- seq(3,43,2)
+me_price_train <- mean(as.matrix(data_train[,col_price]))
+sd_price_train <- sd(as.matrix(data_train[,col_price]))
+me_volume_train <- mean(as.matrix(data_train[,col_volume]))
+sd_volume_train <- sd(as.matrix(data_train[,col_volume]))
+# rescale train data
+for(i in seq(2,42,2)) data_train[,i] <- scale(data_train[,i], center = me_price_train, scale = sd_price_train)
+for(j in seq(3,43,2)) data_train[,j] <- scale(data_train[,j], center = me_volume_train, scale = sd_volume_train)
+X_data_train <- data_train[,(2:43)]
+Y_data_train <- data_train$direction
+# rescale validation data (using train mean and sd)
+for(i in seq(2,42,2)) data_val[,i] <- scale(data_val[,i], center = me_price_train, scale = sd_price_train)
+for(j in seq(3,43,2)) data_val[,j] <- scale(data_val[,j], center = me_volume_train, scale = sd_volume_train)
+X_data_val <- data_val[,(2:43)]
+Y_data_val <- data_val$direction
+# rescale test data (using train mean and sd)
+for(i in seq(2,42,2)) data_test[,i] <- scale(data_test[,i], center = me_price_train, scale = sd_price_train)
+for(j in seq(3,43,2)) data_test[,j] <- scale(data_test[,j], center = me_volume_train, scale = sd_volume_train)
+X_data_test <- data_test[,(2:43)]
+Y_data_test <- data_test$direction
+```
+
+## Create Data Generator & Construct Convulotional Neural Network
+```{r}
+sampling_generator <- function(X_data, Y_data, batch_size, w)
+{
+  function()
+  {
+    rows <- sample(1:(nrow(X_data)-w+1), batch_size, replace = TRUE)
+    tmp <- Y <- X <- NULL
+    for(i in rows)
+    {
+      tmp <- rbind(tmp, as.vector(as.matrix(X_data[(i:(i+w-1)),])))
+      Y <- c(Y, Y_data[i+w-1])
+    }
+    X <- array_reshape(tmp, c(batch_size, w, ncol(X_data), 1), order = "F")
+    Y <- to_categorical(Y, num_classes = 3)
+    list(X, Y)
+  }
+}
+```
+```{r}
+model <- keras_model_sequential() %>% 
+  layer_conv_2d(filters = 16, kernel_size = c(4, 42), activation = "relu", input_shape = c(60, 42, 1)) %>% 
+  layer_conv_2d(filters = 16, kernel_size = c(1, 1), activation = "relu") %>% 
+  layer_conv_2d(filters = 16, kernel_size = c(4, 1), activation = "relu") %>% 
+  layer_flatten() %>% 
+  layer_dense(units = 8, activation = "relu",kernel_regularizer = regularizer_l2(0.001)) %>% 
+  layer_dropout(rate = 0.5) %>%
+  layer_dense(units = 3, activation = "softmax",kernel_regularizer = regularizer_l2(0.001))
+
+
+model %>% compile(
+  loss = "categorical_crossentropy",
+  optimizer = optimizer_rmsprop(lr = 1e-3),
+  metrics = c("acc")
+)
+
+```
+
+## Callback Functions
+```{r}
+#model %>% save_model_hdf5("IEX_CNN.h5")
+# Interrupts training when validation accuracy has stopped improving for more than 4 epoch
+earlyStop <- callback_early_stopping(monitor = "val_acc", patience = 4)
+
+# do not overwrite the model file unless val_loss has improved
+checkPoint <- callback_model_checkpoint(filepath = file.path("IEX_CNN.h5"),
+                                        monitor = "val_acc", save_best_only = TRUE)
+  
+# The callback is triggered after the val_acc has stopped improving for 3 epochs
+# Then learning rate is reduced to lr*0.1
+reduceLr <- callback_reduce_lr_on_plateau(monitor = "val_acc", factor = 0.1, patience = 3)
+
+# learning rate scheduler
+schedule <- function(epoch,lr) (lr)*(0.75^(floor(epoch/2)))
+schedulLr <- callback_learning_rate_scheduler(schedule)
+
+# runtime csv loggers
+logger <- callback_csv_logger(file.path("IEX_lobCNN_callback.csv"))
+```
+```{r}
+his <- model %>% fit_generator(sampling_generator(X_data_train, Y_data_train, batch_size = 100, w=60),
+                               steps_per_epoch = floor((nrow(X_data_train)-w+1) / 1000), epochs = 25,
+                               callbacks = list(logger, earlyStop, checkPoint, reduceLr),
+                               validation_data = sampling_generator(X_data_val, Y_data_val, batch_size = 100, w=60),
+                               validation_steps = floor((nrow(X_data_val)-w+1) /1000))
+
+plot(his)
+fitted <- load_model_hdf5(file.path("IEX_CNN.h5"))
+
+results <- fitted %>% evaluate_generator(sampling_generator(X_data_test, Y_data_test, batch_size = 100, w=60), 
+                                        steps = floor((nrow(X_data_test)-w+1) / 100))
+results
+```
+
+
+```{r}
+library(readr)
+dataset <- read_csv("IEX_lobCNN_callback.csv")
+(dataset)
+mean(dataset$val_acc)
+```
