@@ -1,2 +1,32 @@
 from __future__ import print_function
     use python3.x standard in python2.x
+
+import datetime as dt
+    While date and time arithmetic is supported, the focus of the implementation is on efficient attribute extraction for output formatting and manipulation.
+
+sns.set()
+    Set aesthetic parameters in one step.
+
+matplotlib.cm
+    colormap
+
+yfinance:
+    finance data downloader via yahoo!
+
+pandas_datareader:
+    remote data access for pandas
+
+pandas.pct_change:
+    percentage change between current and prior one
+  
+pandas.cumprod():
+    cumulative product along sequence; [2,5,6] = [2,10,60]
+    
+hmm.GMMHMM:
+    hidden markov models with gaussian mixture emissions
+    
+
+
+
+
+
