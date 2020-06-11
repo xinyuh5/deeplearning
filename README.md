@@ -1,1 +1,1 @@
-repository for collecting thoughts.
+Repository for collecting thoughts
